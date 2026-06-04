@@ -9,6 +9,10 @@ export default function DoctorPortal({ token, user }) {
   const [reason, setReason] = useState('');
   const [doctorNotes, setDoctorNotes] = useState('');
   const [activeApptId, setActiveApptId] = useState(null);
+  const [diagnosis, setDiagnosis] = useState('');
+  const [prescription, setPrescription] = useState('');
+  const [recommendations, setRecommendations] = useState('');
+  const [followUpDate, setFollowUpDate] = useState('');
   
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -97,13 +101,23 @@ export default function DoctorPortal({ token, user }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ notes: doctorNotes })
-      });
+        body: JSON.stringify({
+          notes: doctorNotes,
+          diagnosis,
+          prescription,
+          recommendations,
+          follow_up_date: followUpDate
+        })
+        });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to save notes');
 
       setSuccess('Clinical checkup notes updated and sent to patient!');
       setDoctorNotes('');
+      setDiagnosis('');
+      setPrescription('');
+      setRecommendations('');
+      setFollowUpDate('');
       setActiveApptId(null);
       fetchAppointments();
     } catch (err) {
@@ -142,7 +156,24 @@ export default function DoctorPortal({ token, user }) {
                       key={appt._id}
                       onClick={() => {
                         setActiveApptId(appt._id);
+
                         setDoctorNotes(appt.doctor_notes || '');
+
+                        setDiagnosis(
+                          appt.consultation_report?.diagnosis || ''
+                        );
+
+                        setPrescription(
+                          appt.consultation_report?.prescription || ''
+                        );
+
+                        setRecommendations(
+                          appt.consultation_report?.recommendations || ''
+                        );
+
+                        setFollowUpDate(
+                          appt.consultation_report?.follow_up_date || ''
+                        );
                       }}
                       className={`w-full p-4 rounded-2xl border text-left text-xs transition flex flex-col space-y-1.5 ${activeApptId === appt._id ? 'bg-purple-50/70 border-purple-400 text-purple-700' : 'bg-white border-pink-50 text-gray-600'}`}
                     >
@@ -184,17 +215,51 @@ export default function DoctorPortal({ token, user }) {
                     </p>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Clinical Notes & Prescription</label>
+                  <div className="space-y-4">
+
+                    <input
+                      type="text"
+                      placeholder="Diagnosis"
+                      value={diagnosis}
+                      onChange={(e) => setDiagnosis(e.target.value)}
+                      className="w-full px-4 py-3 bg-white/70 border border-pink-150 rounded-xl text-xs"
+                    />
+
+                    <input
+                      type="text"
+                      placeholder="Prescription"
+                      value={prescription}
+                      onChange={(e) => setPrescription(e.target.value)}
+                      className="w-full px-4 py-3 bg-white/70 border border-pink-150 rounded-xl text-xs"
+                    />
+
                     <textarea
-                      placeholder="Add diagnostic remarks, clinical results, hormone panel requirements, recommended meals or medications..."
+                      rows="3"
+                      placeholder="Recommendations"
+                      value={recommendations}
+                      onChange={(e) => setRecommendations(e.target.value)}
+                      className="w-full px-4 py-3 bg-white/70 border border-pink-150 rounded-xl text-xs"
+                    />
+
+                    <input
+                      type="date"
+                      value={followUpDate}
+                      onChange={(e) => setFollowUpDate(e.target.value)}
+                      className="w-full px-4 py-3 bg-white/70 border border-pink-150 rounded-xl text-xs"
+                    />
+
+                    <textarea
                       rows="6"
+                      placeholder="Clinical Notes"
                       value={doctorNotes}
                       onChange={(e) => setDoctorNotes(e.target.value)}
-                      className="w-full px-4 py-3 bg-white/70 border border-pink-150 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 text-xs"
+                      className="w-full px-4 py-3 bg-white/70 border border-pink-150 rounded-xl text-xs"
                       required
                     />
+
                   </div>
+
+
 
                   <div className="flex justify-end space-x-2">
                     <button
@@ -319,6 +384,39 @@ export default function DoctorPortal({ token, user }) {
                           <p className="text-gray-700 whitespace-pre-line leading-relaxed">{appt.doctor_notes}</p>
                         </div>
                       )}
+                      {appt.consultation_report && (
+                        <div className="bg-blue-50/40 border border-blue-100 p-4 rounded-xl text-xs mt-2">
+
+                          <span className="block font-black text-blue-700 uppercase text-[9px] mb-2">
+                            Consultation Report
+                          </span>
+
+                          {appt.consultation_report.diagnosis && (
+                            <p>
+                              <strong>Diagnosis:</strong> {appt.consultation_report.diagnosis}
+                            </p>
+                          )}
+
+                          {appt.consultation_report.prescription && (
+                            <p>
+                              <strong>Prescription:</strong> {appt.consultation_report.prescription}
+                            </p>
+                          )}
+
+                          {appt.consultation_report.recommendations && (
+                            <p>
+                              <strong>Recommendations:</strong> {appt.consultation_report.recommendations}
+                            </p>
+                          )}
+
+                          {appt.consultation_report.follow_up_date && (
+                            <p>
+                              <strong>Follow Up:</strong> {appt.consultation_report.follow_up_date}
+                            </p>
+                          )}
+
+  </div>
+)}
                     </div>
                   ))
                 )}

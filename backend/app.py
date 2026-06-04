@@ -304,9 +304,6 @@ def appointments_route(current_user):
             # Doctors see all consultations booked with them
             # For demonstration, map based on doctorName or doctorId
             appts = db.find('appointments', {'doctor_id': user_id})
-            # Also support fallback fallback query
-            if not appts:
-                appts = db.find('appointments')
             return jsonify(appts), 200
         else:
             appts = db.find('appointments', {'user_id': user_id})
@@ -319,19 +316,49 @@ def appointments_route(current_user):
             
         doctor_id = data.get('doctor_id')
         # Look up doctor details
-        doctor_name = "Dr. Sarah Connor"
-        if doctor_id == "doc-2":
-            doctor_name = "Dr. Emily Vance"
+        doctor = db.find_one('users', {
+            '_id': doctor_id,
+            'role': 'doctor'
+        })
+
+        if not doctor:
+            return jsonify({
+                'message': 'Doctor not found'
+            }), 404
+
+        doctor_name = doctor['name']
             
         appt = {
             'user_id': user_id,
             'patient_name': current_user.get('name', 'Patient'),
+
             'doctor_id': doctor_id,
             'doctor_name': doctor_name,
+
             'appointment_date': data['appointment_date'],
+
+            'appointment_time': data.get('appointment_time', ''),
+
             'reason': data.get('reason', 'General Health Check'),
-            'status': 'Booked', # Booked, Confirmed, Completed, Cancelled
+
+            'status': 'Pending',
+
             'doctor_notes': '',
+
+            # NEW FIELDS
+            'health_score': current_user.get('health_score', 0),
+
+            'pcos_risk': current_user.get('latest_pcos_risk', 'Unknown'),
+
+            'cycle_status': current_user.get('cycle_status', 'Normal'),
+
+            'consultation_report': {
+                'diagnosis': '',
+                'prescription': '',
+                'recommendations': '',
+                'follow_up_date': ''
+            },
+
             'created_at': datetime.datetime.utcnow().isoformat()
         }
         
@@ -360,12 +387,33 @@ def add_consultation_notes(current_user, appt_id):
         
     data = request.get_json()
     notes = data.get('notes', '')
+    diagnosis = data.get('diagnosis', '')
+    prescription = data.get('prescription', '')
+    recommendations = data.get('recommendations', '')
+    follow_up_date = data.get('follow_up_date', '')
     
     # Update appointment notes
-    success = db.update_one('appointments', {'_id': appt_id}, {'$set': {'doctor_notes': notes, 'status': 'Completed'}})
+    success = db.update_one(
+        'appointments',
+        {'_id': appt_id},
+        {
+            '$set': {
+                'doctor_notes': notes,
+                'status': 'Completed',
+
+                'consultation_report': {
+                    'diagnosis': diagnosis,
+                    'prescription': prescription,
+                    'recommendations': recommendations,
+                    'follow_up_date': follow_up_date
+                },
+
+                'completed_at': datetime.datetime.utcnow().isoformat()
+                  }
+             }
+        )
     if not success:
-        # Fallback to general lookup
-        success = db.update_one('appointments', {'_id': appt_id}, {'$set': {'doctor_notes': notes, 'status': 'Completed'}})
+        return jsonify({'message': 'Failed to update consultation notes. Appointment not found.'}), 404
         
     # Get the appointment to send alert to patient
     appt = db.find_one('appointments', {'_id': appt_id})
