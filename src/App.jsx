@@ -8,6 +8,7 @@ import {
 // Import Views
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
+import DoctorDashboard from './pages/DoctorDashboard';
 import CycleTracker from './pages/CycleTracker';
 import HealthAssessments from './pages/HealthAssessments';
 import WellnessNutrition from './pages/WellnessNutrition';
@@ -20,6 +21,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [roleMode, setRoleMode] = useState('patient'); // for testing multiple roles: patient, doctor, admin
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -69,13 +71,13 @@ export default function App() {
   };
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, role: 'patient' },
-    { id: 'cycle', label: 'Menstrual Intelligence', icon: Calendar, role: 'patient' },
-    { id: 'assessments', label: 'AI Risk Predictors', icon: Activity, role: 'patient' },
-    { id: 'wellness', label: 'Wellness & Nutrition', icon: Brain, role: 'patient' },
-    { id: 'chatbot', label: 'AI Health Chat', icon: MessageSquare, role: 'patient' },
-    { id: 'doctor', label: 'Doctor Consultation', icon: Stethoscope, role: 'patient' },
-    { id: 'reports', label: 'Health Reports', icon: FileText, role: 'patient' },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['patient', 'doctor'] },
+    { id: 'cycle', label: 'Menstrual Intelligence', icon: Calendar, roles: ['patient'] },
+    { id: 'assessments', label: 'AI Risk Predictors', icon: Activity, roles: ['patient'] },
+    { id: 'wellness', label: 'Wellness & Nutrition', icon: Brain, roles: ['patient'] },
+    { id: 'chatbot', label: 'AI Health Chat', icon: MessageSquare, roles: ['patient'] },
+    { id: 'doctor', label: 'Doctor Consultation', icon: Stethoscope, roles: ['patient', 'doctor'] },
+    { id: 'reports', label: 'Health Reports', icon: FileText, roles: ['patient'] },
   ];
 
   const adminMenuItems = [
@@ -85,11 +87,57 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row pink-purple-gradient text-gray-800">
       
+      {/* Mobile Top Navbar */}
+      <div className="md:hidden flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-md border-b border-pink-100 relative z-40 w-full">
+        <div className="flex items-center space-x-3 cursor-pointer" onClick={() => {
+          setCurrentPage('dashboard');
+          setIsMobileMenuOpen(false);
+        }}>
+          <div className="p-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl shadow-md">
+            <Heart className="h-5 w-5" />
+          </div>
+          <div>
+            <span className="font-extrabold text-sm text-gray-800 tracking-tight block">HERBUDDY</span>
+            <span className="text-[8px] text-pink-600 font-extrabold tracking-wider uppercase">DIGITAL TWIN 2.0</span>
+          </div>
+        </div>
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 text-gray-600 hover:text-pink-600 focus:outline-none"
+        >
+          {isMobileMenuOpen ? (
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          )}
+        </button>
+      </div>
+
+      {/* Backdrop for mobile menu */}
+      {isMobileMenuOpen && (
+        <div 
+          onClick={() => setIsMobileMenuOpen(false)}
+          className="fixed inset-0 bg-black/25 backdrop-blur-sm z-30 md:hidden"
+        />
+      )}
+
       {/* 1. Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-white/70 backdrop-blur-md border-r border-pink-100 flex flex-col justify-between p-6 shrink-0 relative z-30">
+      <aside className={`
+        fixed inset-y-0 left-0 z-40 w-64 bg-white/95 backdrop-blur-md border-r border-pink-100 
+        flex flex-col justify-between p-6 transform transition-transform duration-300 ease-in-out
+        md:relative md:translate-x-0 md:flex md:bg-white/70
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
         <div>
           {/* Logo */}
-          <div className="flex items-center space-x-3 mb-8 cursor-pointer" onClick={() => setCurrentPage('dashboard')}>
+          <div className="flex items-center space-x-3 mb-8 cursor-pointer" onClick={() => {
+            setCurrentPage('dashboard');
+            setIsMobileMenuOpen(false);
+          }}>
             <div className="p-2.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-2xl shadow-md">
               <Heart className="h-6 w-6" />
             </div>
@@ -103,13 +151,16 @@ export default function App() {
           <nav className="space-y-1.5">
             {token ? (
               <>
-                {menuItems.map(item => {
+                {menuItems.filter(item => item.roles.includes(roleMode)).map(item => {
                   const Icon = item.icon;
                   const isActive = currentPage === item.id;
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setCurrentPage(item.id)}
+                      onClick={() => {
+                        setCurrentPage(item.id);
+                        setIsMobileMenuOpen(false);
+                      }}
                       className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-200 ${isActive ? 'bg-pink-500 text-white shadow-md shadow-pink-200' : 'text-gray-500 hover:bg-pink-50/50 hover:text-pink-600'}`}
                     >
                       <Icon className="h-4.5 w-4.5" />
@@ -124,7 +175,10 @@ export default function App() {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setCurrentPage(item.id)}
+                      onClick={() => {
+                        setCurrentPage(item.id);
+                        setIsMobileMenuOpen(false);
+                      }}
                       className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-200 ${isActive ? 'bg-purple-600 text-white shadow-md' : 'text-purple-600 hover:bg-purple-50 hover:text-purple-700'}`}
                     >
                       <Icon className="h-4.5 w-4.5" />
@@ -145,7 +199,10 @@ export default function App() {
             <div className="space-y-4">
               {/* Account profile link */}
               <div 
-                onClick={() => setCurrentPage('auth')} 
+                onClick={() => {
+                  setCurrentPage('auth');
+                  setIsMobileMenuOpen(false);
+                }} 
                 className="flex items-center space-x-3 p-2 hover:bg-pink-50/40 rounded-2xl cursor-pointer transition"
               >
                 <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold text-sm shadow-sm">
@@ -158,7 +215,10 @@ export default function App() {
               </div>
 
               <button 
-                onClick={handleLogout}
+                onClick={() => {
+                  handleLogout();
+                  setIsMobileMenuOpen(false);
+                }}
                 className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-red-50 hover:bg-red-100/50 text-red-600 rounded-xl text-xs font-bold transition"
               >
                 <LogOut className="h-4.5 w-4.5" />
@@ -167,7 +227,10 @@ export default function App() {
             </div>
           ) : (
             <button 
-              onClick={() => setCurrentPage('auth')}
+              onClick={() => {
+                setCurrentPage('auth');
+                setIsMobileMenuOpen(false);
+              }}
               className="w-full flex items-center justify-center space-x-2 px-4 py-3.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl text-xs font-bold shadow-md hover:opacity-90 transition"
             >
               <LogIn className="h-4.5 w-4.5" />
@@ -228,12 +291,21 @@ export default function App() {
           ) : (
             <>
               {currentPage === 'dashboard' && (
-                <Dashboard 
-                  token={token} 
-                  user={user} 
-                  refreshUserData={fetchUserProfile} 
-                  setCurrentPage={setCurrentPage}
-                />
+                roleMode === 'doctor' ? (
+                  <DoctorDashboard 
+                    token={token} 
+                    user={user} 
+                    refreshUserData={fetchUserProfile} 
+                    setCurrentPage={setCurrentPage}
+                  />
+                ) : (
+                  <Dashboard 
+                    token={token} 
+                    user={user} 
+                    refreshUserData={fetchUserProfile} 
+                    setCurrentPage={setCurrentPage}
+                  />
+                )
               )}
               {currentPage === 'cycle' && (
                 <CycleTracker 

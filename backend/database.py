@@ -123,7 +123,7 @@ class DualDatabase:
         if mongo_uri is None:
             mongo_uri = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
         if db_name is None:
-            db_name = os.environ.get("DB_NAME", "herbuddy")
+            db_name = os.environ.get("DB_NAME", "herbuddy_new")
 
         self.fallback = False
         self.client = None
