@@ -2,6 +2,8 @@
 node_modules/
 dist/
 .env
+venv/
+.venv/
 
 # Python
 __pycache__/
@@ -20,3 +22,4 @@ backend/pcos_rf_model.pkl
 .vscode/
 .DS_Store
 Thumbs.db
+

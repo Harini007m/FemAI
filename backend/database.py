@@ -98,8 +98,33 @@ class JSONCollection:
         return True
 
 
+def load_dotenv():
+    # .env is located at the project root (one level above backend directory)
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env_path = os.path.join(root_dir, '.env')
+    if os.path.exists(env_path):
+        with open(env_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                if '=' in line:
+                    key, val = line.split('=', 1)
+                    # Strip spaces and optional quotes
+                    key = key.strip()
+                    val = val.strip().strip("'").strip('"')
+                    os.environ[key] = val
+
+load_dotenv()
+
+
 class DualDatabase:
-    def __init__(self, mongo_uri="mongodb://localhost:27017/", db_name="herbuddy"):
+    def __init__(self, mongo_uri=None, db_name=None):
+        if mongo_uri is None:
+            mongo_uri = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
+        if db_name is None:
+            db_name = os.environ.get("DB_NAME", "herbuddy")
+
         self.fallback = False
         self.client = None
         self.db = None
@@ -111,7 +136,7 @@ class DualDatabase:
             # Trigger a connection test
             self.client.admin.command('ping')
             self.db = self.client[db_name]
-            print("MongoDB connected successfully.")
+            print(f"MongoDB connected successfully to Database: {db_name}")
         except (ConnectionFailure, ServerSelectionTimeoutError, Exception) as e:
             print(f"MongoDB connection failed: {e}. Falling back to local JSON files.")
             self.fallback = True
