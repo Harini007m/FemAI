@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+dist/
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Local databases and compiled outputs
+backend/data/
+backend/static_reports/
+backend/pcos_rf_model.pkl
+
+# IDEs and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
