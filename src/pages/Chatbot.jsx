@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Sparkles, MessageSquare, Bot, User, Trash2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function Chatbot({ token, user }) {
   const [messages, setMessages] = useState([
@@ -122,16 +124,38 @@ export default function Chatbot({ token, user }) {
                   {isBot ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
                 </div>
 
-                {/* Message body */}
+                {/* Message body with Markdown support */}
                 <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-xs leading-relaxed shadow-sm border ${
                   isBot 
                     ? 'bg-white border-pink-50 text-gray-800 rounded-tl-none' 
                     : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white border-pink-500 rounded-tr-none'
                 }`}>
-                  {/* Handle newlines for readability */}
-                  <div className="whitespace-pre-line">
-                    {m.message}
-                  </div>
+                  {isBot ? (
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        h1: ({ children }) => <h1 className="text-base font-black text-pink-700 mb-2 mt-3 first:mt-0">{children}</h1>,
+                        h2: ({ children }) => <h2 className="text-sm font-bold text-pink-600 mb-2 mt-2 first:mt-0">{children}</h2>,
+                        h3: ({ children }) => <h3 className="text-xs font-bold text-gray-800 mb-2 mt-2 first:mt-0">{children}</h3>,
+                        p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                        strong: ({ children }) => <strong className="font-bold text-pink-600">{children}</strong>,
+                        em: ({ children }) => <em className="italic text-gray-700">{children}</em>,
+                        ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                        li: ({ children }) => <li className="ml-2">{children}</li>,
+                        code: ({ inline, children }) => inline
+                          ? <code className="bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded text-[10px] font-mono">{children}</code>
+                          : <code className="block bg-gray-800 text-gray-100 p-2 rounded-lg font-mono text-[11px] mb-2 overflow-x-auto">{children}</code>,
+                        pre: ({ children }) => <pre className="block bg-gray-800 text-gray-100 p-3 rounded-lg font-mono text-[10px] mb-2 overflow-x-auto">{children}</pre>,
+                        blockquote: ({ children }) => <blockquote className="border-l-4 border-pink-500 pl-3 italic text-gray-700 my-2">{children}</blockquote>,
+                        a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-pink-600 underline hover:text-pink-700">{children}</a>,
+                      }}
+                    >
+                      {m.message}
+                    </ReactMarkdown>
+                  ) : (
+                    <div>{m.message}</div>
+                  )}
                 </div>
               </div>
             );
