@@ -3,34 +3,18 @@ import pickle
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
 
-# File path for serialized PCOS model
+# File path for serialized PCOS models
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
 PCOS_MODEL_PATH = os.path.join(MODEL_DIR, "pcos_rf_model.pkl")
+PCOS_NN_MODEL_PATH = os.path.join(MODEL_DIR, "pcos_nn_model.pkl")
 
-def get_pcos_model():
-    """Load the PCOS model from disk or train a new one on synthetic data if not present."""
-    if os.path.exists(PCOS_MODEL_PATH):
-        try:
-            with open(PCOS_MODEL_PATH, 'rb') as f:
-                return pickle.load(f)
-        except Exception:
-            pass
-
-    # No model file, let's train a model dynamically on simulated PCOS clinical survey data
-    print("Training PCOS Random Forest Classifier on synthetic clinical samples...")
+def generate_synthetic_pcos_data(n_samples=800):
+    """Generate synthetic clinical survey samples for PCOS training."""
     np.random.seed(42)
-    n_samples = 800
-    
-    # Features:
-    # 0. age (15 to 45)
-    # 1. bmi (15 to 40)
-    # 2. weight_gain (0/1)
-    # 3. acne (0/1)
-    # 4. hair_growth (0/1)
-    # 5. cycle_irregularity (0/1)
-    # 6. sedentary_lifestyle (0/1)
-    
     age = np.random.randint(15, 46, n_samples)
     bmi = np.random.uniform(16, 38, n_samples)
     weight_gain = np.random.choice([0, 1], size=n_samples, p=[0.6, 0.4])
@@ -39,9 +23,7 @@ def get_pcos_model():
     cycle_irregularity = np.random.choice([0, 1], size=n_samples, p=[0.65, 0.35])
     sedentary = np.random.choice([0, 1], size=n_samples, p=[0.5, 0.5])
     
-    # Calculate target (PCOS risk probability)
-    # We assign different weights to risk factors based on medical literature:
-    # High weights for Cycle Irregularity, Hair growth (Hirsutism), Weight gain/high BMI, and Acne.
+    # Calculate target based on medical indicators weight
     score = (
         0.30 * cycle_irregularity + 
         0.25 * hair_growth + 
@@ -51,7 +33,6 @@ def get_pcos_model():
         0.05 * sedentary
     )
     
-    # Convert score to target labels (0=Low, 1=Medium, 2=High risk)
     y = []
     for s in score:
         if s >= 0.55:
@@ -70,22 +51,57 @@ def get_pcos_model():
         'cycle_irregularity': cycle_irregularity,
         'sedentary': sedentary
     })
-    
+    return X, y
+
+def get_pcos_model():
+    """Load the PCOS Random Forest model from disk or train a new one."""
+    if os.path.exists(PCOS_MODEL_PATH):
+        try:
+            with open(PCOS_MODEL_PATH, 'rb') as f:
+                return pickle.load(f)
+        except Exception:
+            pass
+
+    print("Training PCOS Random Forest Classifier on synthetic clinical samples...")
+    X, y = generate_synthetic_pcos_data()
     clf = RandomForestClassifier(n_estimators=100, random_state=42)
     clf.fit(X, y)
     
-    # Save the model
     with open(PCOS_MODEL_PATH, 'wb') as f:
         pickle.dump(clf, f)
         
     return clf
 
-# Load or initialize
+def get_pcos_nn_model():
+    """Load the PCOS Neural Network (MLP) model from disk or train a new one."""
+    if os.path.exists(PCOS_NN_MODEL_PATH):
+        try:
+            with open(PCOS_NN_MODEL_PATH, 'rb') as f:
+                return pickle.load(f)
+        except Exception:
+            pass
+
+    print("Training PCOS MLP Neural Network on synthetic clinical samples...")
+    X, y = generate_synthetic_pcos_data()
+    
+    # MLP Classifier inside a Pipeline to ensure proper feature scaling
+    mlp_pipeline = Pipeline([
+        ('scaler', StandardScaler()),
+        ('mlp', MLPClassifier(hidden_layer_sizes=(16, 8), max_iter=800, random_state=42))
+    ])
+    mlp_pipeline.fit(X, y)
+    
+    with open(PCOS_NN_MODEL_PATH, 'wb') as f:
+        pickle.dump(mlp_pipeline, f)
+        
+    return mlp_pipeline
+
+# Initialize models
 pcos_model = get_pcos_model()
+pcos_nn_model = get_pcos_nn_model()
 
 def predict_pcos(age, bmi, weight_gain, acne, hair_growth, cycle_irregularity, sedentary):
-    """Predict PCOS risk using the Trained RF Model."""
-    # Convert inputs to 0/1 integers
+    """Predict PCOS risk using the Trained RF and MLP Neural Network Models."""
     wg = 1 if weight_gain else 0
     ac = 1 if acne else 0
     hg = 1 if hair_growth else 0
@@ -102,17 +118,26 @@ def predict_pcos(age, bmi, weight_gain, acne, hair_growth, cycle_irregularity, s
         'sedentary': sd
     }])
     
-    prob = pcos_model.predict_proba(X_input)[0]
-    pred_class = int(pcos_model.predict(X_input)[0])
+    # 1. RF Prediction
+    rf_prob = pcos_model.predict_proba(X_input)[0]
+    rf_pct = round((rf_prob[1] * 0.4 + rf_prob[2] * 1.0) * 100)
+    
+    # 2. NN Prediction
+    nn_prob = pcos_nn_model.predict_proba(X_input)[0]
+    nn_pct = round((nn_prob[1] * 0.4 + nn_prob[2] * 1.0) * 100)
+    
+    # 3. Blended Ensemble (Average probability vector)
+    ensemble_prob = (rf_prob + nn_prob) / 2.0
+    pred_class = int(np.argmax(ensemble_prob))
     
     # Class map
     risk_labels = {0: "Low Risk", 1: "Medium Risk", 2: "High Risk"}
     risk_level = risk_labels[pred_class]
     
-    # Risk percentage is computed from the probability distributions
-    # Probability of medium + high gives a good clinical scale
-    risk_pct = round((prob[1] * 0.4 + prob[2] * 1.0) * 100)
-    # Ensure some minimum baseline based on inputs
+    # Blended risk percentage
+    risk_pct = round((ensemble_prob[1] * 0.4 + ensemble_prob[2] * 1.0) * 100)
+    
+    # Baseline logic overrides based on clinical indicators
     if ci and hg:
         risk_pct = max(risk_pct, 75)
         risk_level = "High Risk"
@@ -121,11 +146,16 @@ def predict_pcos(age, bmi, weight_gain, acne, hair_growth, cycle_irregularity, s
         risk_level = "Medium Risk" if risk_level == "Low Risk" else risk_level
 
     # Explanation and recommendations based on clinical guidelines
-    explanation = f"Based on our machine learning analysis, your risk level is {risk_level} ({risk_pct}% match). "
-    recommendations = []
+    explanation = (
+        f"Based on our consensus machine learning analysis (Random Forest and MLP Neural Network), "
+        f"your overall risk is categorized as {risk_level} ({risk_pct}% blended score). "
+        f"The Random Forest model estimated risk at {rf_pct}%, and the Multi-Layer Perceptron Neural Network "
+        f"estimated risk at {nn_pct}%."
+    )
     
+    recommendations = []
     if risk_level == "High Risk":
-        explanation += "You show key indicators like cycle irregularity and hirsutism, which are strongly correlated with PCOS (Polycystic Ovary Syndrome)."
+        explanation += " You show key indicators like cycle irregularity and hirsutism, which are strongly correlated with PCOS (Polycystic Ovary Syndrome)."
         recommendations = [
             "Schedule a clinical evaluation with a Gynecologist / Endocrinologist.",
             "Ask about pelvic ultrasounds to check for ovarian cysts and blood tests for hormone panels (free testosterone, LH/FSH ratio).",
@@ -134,7 +164,7 @@ def predict_pcos(age, bmi, weight_gain, acne, hair_growth, cycle_irregularity, s
             "Track cycle data and report anomalies immediately."
         ]
     elif risk_level == "Medium Risk":
-        explanation += "You show some mild symptoms. Changes in lifestyle and hormone balance checks are recommended to prevent progression."
+        explanation += " You show some mild symptoms. Changes in lifestyle and hormone balance checks are recommended to prevent progression."
         recommendations = [
             "Monitor cycle lengths closely using the HERBUDDY Menstrual Intelligence engine.",
             "Switch to a whole-foods diet, cutting processed sugars and saturated fats.",
@@ -143,7 +173,7 @@ def predict_pcos(age, bmi, weight_gain, acne, hair_growth, cycle_irregularity, s
             "Consult a clinical dietitian to optimize nutritional profiles."
         ]
     else:
-        explanation += "Your health indicators are within typical baseline ranges. No prominent signs of PCOS detected."
+        explanation += " Your health indicators are within typical baseline ranges. No prominent signs of PCOS detected."
         recommendations = [
             "Maintain a balanced, nutritious diet with leafy greens, lean proteins, and fiber.",
             "Stay hydrated (2-3 liters of water daily).",
@@ -154,9 +184,12 @@ def predict_pcos(age, bmi, weight_gain, acne, hair_growth, cycle_irregularity, s
     return {
         'risk_level': risk_level,
         'risk_percentage': risk_pct,
+        'rf_percentage': rf_pct,
+        'nn_percentage': nn_pct,
         'explanation': explanation,
         'recommended_actions': recommendations
     }
+
 
 def analyze_uterine_health(symptoms):
     """

@@ -274,6 +274,47 @@ export default function HealthAssessments({ token, user, refreshUserData }) {
                     <p className="text-gray-600 text-xs leading-relaxed">{pcosResult.explanation}</p>
                   </div>
 
+                  {/* Model Comparison Metrics */}
+                  {pcosResult.rf_percentage !== undefined && pcosResult.nn_percentage !== undefined && (
+                    <div className="bg-white border border-pink-100 p-5 rounded-2xl space-y-4 shadow-sm animate-fadeIn">
+                      <h4 className="font-bold text-gray-800 text-xs uppercase text-pink-600 tracking-wider">Consensus ML Model Insights</h4>
+                      
+                      <div className="space-y-3">
+                        {/* Random Forest Bar */}
+                        <div>
+                          <div className="flex justify-between text-xs font-semibold text-gray-600 mb-1">
+                            <span>Random Forest Classifier</span>
+                            <span className="font-bold text-pink-600">{pcosResult.rf_percentage}% Risk</span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                            <div 
+                              className="bg-pink-500 h-full rounded-full transition-all duration-500" 
+                              style={{ width: `${pcosResult.rf_percentage}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Neural Network Bar */}
+                        <div>
+                          <div className="flex justify-between text-xs font-semibold text-gray-600 mb-1">
+                            <span>Multi-Layer Perceptron Neural Network</span>
+                            <span className="font-bold text-purple-600">{pcosResult.nn_percentage}% Risk</span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                            <div 
+                              className="bg-purple-600 h-full rounded-full transition-all duration-500" 
+                              style={{ width: `${pcosResult.nn_percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="text-[10px] text-gray-400 italic">
+                        The blended risk score averages the output probabilities from both estimators to improve clinical assessment robustness.
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-3">
                     <h4 className="font-bold text-gray-800 text-sm">Recommended Care Actions:</h4>
                     {pcosResult.recommended_actions.map((act, index) => (
@@ -489,9 +530,9 @@ export default function HealthAssessments({ token, user, refreshUserData }) {
             
             <div className="space-y-4">
               <div className="border-b border-gray-100 pb-3">
-                <h5 className="font-bold text-gray-800 text-xs uppercase text-pink-600 mb-1">PCOS Random Forest Model</h5>
+                <h5 className="font-bold text-gray-800 text-xs uppercase text-pink-600 mb-1">PCOS ML Consensus (RF & NN)</h5>
                 <p className="text-gray-500 text-[11px] leading-relaxed">
-                  Our machine learning model analyzes the interactions between weight patterns, insulin-linked markers (like acne or hirsutism), and cycle histories to estimate risk probabilities.
+                  Our system evaluates risk factors using an ensemble of a Random Forest Classifier and a Multi-Layer Perceptron (MLP) Neural Network, averaging their predictions for a robust, consensus-driven risk score.
                 </p>
               </div>
 
